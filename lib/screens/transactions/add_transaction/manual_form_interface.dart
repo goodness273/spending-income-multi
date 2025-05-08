@@ -7,6 +7,7 @@ import 'package:spending_income/utils/app_theme/colors.dart';
 import 'package:spending_income/utils/app_theme/helpers.dart';
 import 'package:spending_income/utils/app_theme/button_styles.dart';
 import 'package:spending_income/utils/app_theme/text_styles.dart';
+import 'package:spending_income/common/widgets/app_modal.dart';
 import 'transaction_models.dart';
 
 class ManualFormInterface extends StatefulWidget {
@@ -154,7 +155,7 @@ class _ManualFormInterfaceState extends State<ManualFormInterface> {
               decoration: InputDecoration(
                 labelText: 'Date',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                suffixIcon: const Icon(Icons.calendar_today),
+                suffixIcon: const Icon(Icons.calendar_today_outlined),
                 contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               ),
               readOnly: true,
@@ -164,6 +165,19 @@ class _ManualFormInterfaceState extends State<ManualFormInterface> {
                   initialDate: widget.selectedDate,
                   firstDate: DateTime(2000),
                   lastDate: DateTime.now(),
+                  builder: (context, childWidget) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: ColorScheme.light(
+                          primary: AppThemeHelpers.getPrimaryColor(isDarkMode),
+                        ),
+                        iconTheme: IconThemeData(
+                          color: AppThemeHelpers.getPrimaryColor(isDarkMode),
+                        ),
+                      ),
+                      child: childWidget!,
+                    );
+                  },
                 );
                 if (pickedDate != null && pickedDate != widget.selectedDate) {
                   widget.onDateChanged(pickedDate);
@@ -190,6 +204,19 @@ class _ManualFormInterfaceState extends State<ManualFormInterface> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               ),
+              // Ensure text is saved when keyboard is dismissed
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (value) {
+                // Save the value to the controller explicitly
+                widget.vendorController.text = value;
+                // Hide keyboard
+                FocusScope.of(context).unfocus();
+              },
+              onEditingComplete: () {
+                // Save the current value and unfocus
+                widget.vendorController.text = widget.vendorController.text;
+                FocusScope.of(context).unfocus();
+              },
             ),
             
             const SizedBox(height: 24),
@@ -256,30 +283,17 @@ class _ManualFormInterfaceState extends State<ManualFormInterface> {
   }
 
   void _showDeleteConfirmation(BuildContext context) {
-    showDialog(
+    AppModal.showConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Transaction'),
-        content: const Text('Are you sure you want to delete this transaction? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              if (widget.onDelete != null) {
-                widget.onDelete!();
-              }
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
+      title: 'Delete Transaction',
+      message: 'Are you sure you want to delete this transaction? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      isDangerous: true, // Mark as dangerous to show the delete button in red
+    ).then((confirmed) {
+      if (confirmed && widget.onDelete != null) {
+        widget.onDelete!();
+      }
+    });
   }
 }

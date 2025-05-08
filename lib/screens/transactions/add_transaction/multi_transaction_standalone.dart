@@ -301,6 +301,10 @@ class _MultiTransactionStandaloneState extends State<MultiTransactionStandalone>
                               colorScheme: ColorScheme.light(
                                 primary: AppThemeHelpers.getPrimaryColor(isDarkMode),
                               ),
+                              // Use outlined icon style for consistency
+                              iconTheme: IconThemeData(
+                                color: AppThemeHelpers.getPrimaryColor(isDarkMode),
+                              ),
                             ),
                             child: childWidget!,
                           );
@@ -484,43 +488,22 @@ class _MultiTransactionStandaloneState extends State<MultiTransactionStandalone>
     );
   }
   
-  // Confirm before deleting a transaction
+  // Confirm before deleting a transaction using standard AppModal.showConfirmation
   void _confirmDeleteTransaction(BuildContext context, int index) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    showDialog(
+    AppModal.showConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Remove Transaction',
-          style: AppThemeHelpers.getBodyStyle(isDarkMode).copyWith(
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to remove this transaction?',
-          style: AppThemeHelpers.getBodyStyle(isDarkMode),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _editableTransactions.removeAt(index);
-              });
-              Navigator.of(context).pop();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
+      title: 'Remove Transaction',
+      message: 'Are you sure you want to remove this transaction?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      isDangerous: true, // Mark as dangerous to show the remove button in red
+    ).then((confirmed) {
+      if (confirmed) {
+        setState(() {
+          _editableTransactions.removeAt(index);
+        });
+      }
+    });
   }
   
   // Get category options based on transaction type

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:spending_income/common/widgets/app_modal.dart';
 import 'package:spending_income/models/transaction.dart' as model;
 import 'package:spending_income/screens/transaction_screen/transaction_list_item.dart';
-import 'package:spending_income/utils/app_theme/index.dart';
+import 'package:spending_income/utils/app_theme/colors.dart';
+import 'package:spending_income/utils/app_theme/helpers.dart';
 
 class TransactionList extends StatelessWidget {
   final List<model.Transaction> transactions;
@@ -75,7 +77,7 @@ class TransactionList extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.only(right: 20),
                   child: Icon(
-                    Icons.delete,
+                    Icons.delete_outline,
                     color: AppColors.white,
                   ),
                 ),
@@ -85,24 +87,13 @@ class TransactionList extends StatelessWidget {
                   }
                 },
                 confirmDismiss: (direction) async {
-                  return await showDialog(
+                  return await AppModal.showConfirmation(
                     context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text("Confirm"),
-                        content: const Text("Are you sure you want to delete this transaction?"),
-                        actions: [
-                          TextButton(
-                            child: const Text("Cancel"),
-                            onPressed: () => Navigator.of(context).pop(false),
-                          ),
-                          TextButton(
-                            child: const Text("Delete"),
-                            onPressed: () => Navigator.of(context).pop(true),
-                          ),
-                        ],
-                      );
-                    },
+                    title: "Delete Transaction",
+                    message: "Are you sure you want to delete this transaction?",
+                    confirmText: "Delete",
+                    cancelText: "Cancel",
+                    isDangerous: true,
                   );
                 },
                 child: TransactionListItem(

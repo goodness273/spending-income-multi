@@ -155,22 +155,38 @@ class _AiChatInterfaceState extends State<AiChatInterface> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: _chatController,
-                      decoration: InputDecoration(
-                        hintText: 'Type your transaction...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: 50,
+                        maxHeight: 150, // Maximum height to prevent excessive expansion
                       ),
-                      // Make the TextField expand vertically
-                      maxLines: null,
-                      minLines: 1,
-                      // Limit input to max characters
-                      maxLength: maxInputLength,
-                      // Hide the default counter as we're showing our own
-                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-                      textInputAction: TextInputAction.newline,
-                      onSubmitted: (_) => _handleSend(),
+                      child: TextField(
+                        controller: _chatController,
+                        decoration: InputDecoration(
+                          hintText: 'Type your transaction...',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          filled: true,
+                          fillColor: isDarkMode ? AppColors.darkCardBackground : AppColors.white,
+                          // Make sure the container expands properly with the text
+                          isDense: true,
+                        ),
+                        style: AppThemeHelpers.getBodyStyle(isDarkMode),
+                        minLines: 1,
+                        maxLines: 6, // Allow more lines to prevent overflow
+                        keyboardType: TextInputType.multiline,
+                        textCapitalization: TextCapitalization.sentences,
+                        onChanged: (text) {
+                          // Limit text to max character count
+                          if (text.length > maxInputLength && text.isNotEmpty) {
+                            _chatController.text = text.substring(0, maxInputLength);
+                            _chatController.selection = TextSelection.fromPosition(
+                              TextPosition(offset: maxInputLength),
+                            );
+                          }
+                          setState(() {});
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -251,6 +267,12 @@ class _AiChatInterfaceState extends State<AiChatInterface> {
           message.contains('Naira**') ||
           message.contains('***') ||
           message.contains('```') ||
+          message.contains('**') || // Hide any bold text (often used in thinking)
+          message.contains('*') || // Hide any italics or bullet points
+          message.contains('•') || // Hide bullet points
+          message.trim().startsWith('-') || // Hide list items with dashes
+          message.contains('check for') || // Hide debugging suggestions
+          message.contains('leak') || // Hide irrelevant advice about leaks
           message.trim().startsWith('*') && (message.contains('earned') || message.contains('spent'))) {
         // Don't add this thinking text to the chat view
         // The loading indicator will be shown instead (handled in the build method)

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:spending_income/common/widgets/app_modal.dart';
 import 'package:spending_income/models/transaction.dart';
 import 'package:spending_income/utils/app_theme/colors.dart';
 import 'package:spending_income/utils/app_theme/helpers.dart';
@@ -219,38 +220,21 @@ class _MultiTransactionReviewState extends State<MultiTransactionReview> {
 
   // Show delete confirmation dialog
   void _confirmDeleteTransaction(BuildContext context, int index) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    showDialog(
+    // Use the standardized AppModal.showConfirmation for consistency throughout the app
+    AppModal.showConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Transaction'),
-        content: const Text('Are you sure you want to remove this transaction from the list?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: AppThemeHelpers.getSecondaryTextColor(isDarkMode),
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() {
-                _editableTransactions.removeAt(index);
-              });
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
+      title: 'Remove Transaction',
+      message: 'Are you sure you want to remove this transaction from the list?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      isDangerous: true, // Mark as dangerous to show remove in red
+    ).then((confirmed) {
+      if (confirmed) {
+        setState(() {
+          _editableTransactions.removeAt(index);
+        });
+      }
+    });
   }
   
   // Handle editing a transaction in the list

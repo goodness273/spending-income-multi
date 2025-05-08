@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:spending_income/common/widgets/app_modal.dart';
 import 'package:spending_income/models/transaction.dart' as model;
 import 'package:spending_income/screens/transaction_screen/transaction_list_item.dart';
 import 'package:spending_income/utils/app_theme/index.dart';
@@ -79,7 +80,7 @@ class TransactionContent extends StatelessWidget {
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 20),
               child: Icon(
-                Icons.delete,
+                Icons.delete_outline, // Using outlined variant per user preference
                 color: AppColors.white,
               ),
             ),
@@ -89,24 +90,13 @@ class TransactionContent extends StatelessWidget {
               }
             },
             confirmDismiss: (direction) async {
-              return await showDialog(
+              return await AppModal.showConfirmation(
                 context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text("Confirm"),
-                    content: const Text("Are you sure you want to delete this transaction?"),
-                    actions: [
-                      TextButton(
-                        child: const Text("Cancel"),
-                        onPressed: () => Navigator.of(context).pop(false),
-                      ),
-                      TextButton(
-                        child: const Text("Delete"),
-                        onPressed: () => Navigator.of(context).pop(true),
-                      ),
-                    ],
-                  );
-                },
+                title: "Delete Transaction",
+                message: "Are you sure you want to delete this transaction?",
+                confirmText: "Delete",
+                cancelText: "Cancel",
+                isDangerous: true, // Mark as dangerous to show delete in red
               );
             },
             child: TransactionListItem(

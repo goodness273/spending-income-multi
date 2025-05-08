@@ -125,22 +125,18 @@ If no date reference exists, respond with "NO_DATE_REFERENCE".
     }
     
     try {
-      // Pre-extract any date reference from the conversation history
-      final preExtractedDateRef = await _extractDateReferenceFromHistory();
-      debugPrint('Pre-extracted date reference: $preExtractedDateRef');
-      
       // Get today's date for the AI's reference
       final now = DateTime.now();
       final String todayFormatted = _formatDate(now);
       final String yesterdayFormatted = _formatDate(now.subtract(const Duration(days: 1)));
       
-      // Send a special extraction prompt to get structured data
+      // Send a special extraction prompt that handles both date extraction and transaction parsing
       final extractionPrompt = '''
 Today's date is $todayFormatted.
 Yesterday's date was $yesterdayFormatted.
-${preExtractedDateRef != null ? 'I detected this date reference in our conversation: "$preExtractedDateRef".' : ''}
 
-Based on our conversation, please extract the transaction details in the following JSON format:
+Based on our conversation, please first identify any date references mentioned (like yesterday, 2 days ago, last week, etc.) 
+and then extract the transaction details in the following JSON format:
 {
   "amount": 0.00,
   "type": "expense" or "income",
@@ -172,7 +168,7 @@ Date handling examples:
 - If "last week" is mentioned, use ${_formatDate(now.subtract(const Duration(days: 7)))}
 - If no date is mentioned, use today's date ($todayFormatted)
 
-${preExtractedDateRef != null ? 'CRITICAL: Pay special attention to the date reference "$preExtractedDateRef" and calculate the correct date.' : ''}
+CRITICAL: Analyze the conversation carefully to find any date references and use them for accurate date calculation.
 
 If any field is unclear or missing, use null for that field. Only respond with the JSON.
 ''';

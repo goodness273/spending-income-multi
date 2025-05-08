@@ -3,6 +3,7 @@ import 'app_theme/colors.dart';
 import 'app_theme/text_styles.dart';
 import 'app_theme/helpers.dart';
 import 'app_theme/button_styles.dart';
+import 'package:spending_income/common/widgets/app_modal.dart';
 
 /// Provides reusable UI components for consistent appearance across the app
 class UIComponents {
@@ -99,7 +100,7 @@ class UIComponents {
     );
   }
 
-  /// Custom alert dialog
+  /// Custom alert dialog - delegates to AppModal.showConfirmation for consistency
   static Future<bool?> showCustomDialog({
     required BuildContext context,
     required String title,
@@ -107,44 +108,19 @@ class UIComponents {
     String? confirmText,
     String? cancelText,
     bool isDismissible = true,
+    bool isDangerous = false,
   }) async {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return await showDialog<bool>(
+    // Use AppModal.showConfirmation for consistency
+    bool result = await AppModal.showConfirmation(
       context: context,
-      barrierDismissible: isDismissible,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          backgroundColor:
-              isDark ? AppColors.darkCardBackground : AppColors.white,
-          title: Text(
-            title,
-            style: isDark ? AppTextStyles.darkTitleStyle : AppTextStyles.lightTitleStyle,
-          ),
-          content: Text(
-            message,
-            style: isDark ? AppTextStyles.darkBodyStyle : AppTextStyles.lightBodyStyle,
-          ),
-          actions: [
-            if (cancelText != null)
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                style: AppButtonStyles.getTextButtonStyle(context),
-                child: Text(cancelText),
-              ),
-            if (confirmText != null)
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: AppButtonStyles.getPrimaryButtonStyle(context),
-                child: Text(confirmText),
-              ),
-          ],
-        );
-      },
+      title: title,
+      message: message,
+      confirmText: confirmText ?? 'Confirm',
+      cancelText: cancelText ?? 'Cancel',
+      isDangerous: isDangerous,
     );
+    
+    return result;
   }
 
   /// Custom snackbar

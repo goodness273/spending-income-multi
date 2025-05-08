@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spending_income/common/widgets/app_modal.dart';
 import 'package:spending_income/models/transaction.dart';
 import 'package:spending_income/screens/transactions/add_transaction/ai_chat_interface.dart';
 import 'package:spending_income/screens/transactions/add_transaction/manual_form_interface.dart';
@@ -34,29 +35,19 @@ class AddTransactionModal extends StatefulWidget {
   @override
   State<AddTransactionModal> createState() => _AddTransactionModalState();
 
-  // Static method to show the modal
+  // Static method to show the modal using AppModal component
   static Future<void> show(
     BuildContext context, 
     Function(Transaction) onTransactionAdded, 
     {Transaction? initialTransaction}
   ) async {
-    final result = await showModalBottomSheet<Transaction>(
+    final result = await AppModal.show<Transaction>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      // Use FractionallySizedBox for consistent height
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.75,
-          child: AddTransactionModal(
-            onTransactionAdded: onTransactionAdded,
-            initialTransaction: initialTransaction,
-          ),
-        ),
+      title: 'New Transaction',
+      height: AppConstants.modalExtendedHeightRatio,
+      builder: (context) => AddTransactionModal(
+        onTransactionAdded: onTransactionAdded,
+        initialTransaction: initialTransaction,
       ),
     );
     
@@ -164,53 +155,24 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 16), 
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Dismiss Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: AppThemeHelpers.getDividerColor(isDarkMode),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            // Title
-            Padding(
-              padding: const EdgeInsets.only(bottom: 15.0),
-              child: Text(
-                widget.initialTransaction != null ? 'Edit Transaction' : 'New Transaction',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            // Method selector - Only show when adding new transaction
-            if (widget.initialTransaction == null) ...[
-              TransactionMethodSelector(
-                currentInputMethod: _currentInputMethod,
-                onMethodChanged: _handleMethodChange,
-              ),
-              const SizedBox(height: 16),
-            ],
-            // Content area - this is where the form or chat interface will go
-            Expanded(
-              child: _buildCurrentView(),
-            ),
-          ],
+    // The header, dismiss handle, and modal frame are now handled by AppModal
+    // We only need to provide the content that goes inside the modal
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Method selector - Only show when adding new transaction
+        if (widget.initialTransaction == null) ...[  
+          TransactionMethodSelector(
+            currentInputMethod: _currentInputMethod,
+            onMethodChanged: _handleMethodChange,
+          ),
+          const SizedBox(height: 16),
+        ],
+        // Content area - this is where the form or chat interface will go
+        Expanded(
+          child: _buildCurrentView(),
         ),
-      ),
+      ],
     );
   }
 
@@ -365,35 +327,38 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   }
 
   void _handleMethodChange(TransactionInputMethod method) {
+    // Save current vendor text before any potential clears
+    final currentVendor = _vendorController.text;
+    
     setState(() {
       _currentInputMethod = method;
       
       if (method == TransactionInputMethod.aiChat) {
         // Check if we have multiple transactions first and prioritize that
         if (_parsedMultiTransactions.isNotEmpty) {
-          // If we have multiple transactions, always show the multi-transaction view
           _currentModalView = ModalView.multiTransactions;
         } else if (_parsedAiTransactionData != null) {
-          // Coming from single-transaction view - preserve the single review form
           _currentModalView = ModalView.aiReview;
         } else {
-          // Fresh AI chat session
           _currentModalView = ModalView.aiChat;
           _aiInteractionCount = 0;
           
-          // Don't clear chat messages if already present
           if (_chatMessages.isEmpty) {
             _chatMessages.add({'sender': 'ai', 'text': 'Tell me about your transaction...\n(e.g., "Spent 5000 naira on fuel yesterday")'});
           }
         }
       } else {
-        // Going to manual form
+        // Going to manual form - preserve vendor text
         _currentModalView = ModalView.manualForm;
-        _clearFormFields();
+        _clearFormFields(preserveVendor: true);
       }
     });
     
-    // Save the method preference
+    // Restore vendor text if switching back to AI chat
+    if (method == TransactionInputMethod.aiChat && currentVendor.isNotEmpty) {
+      _vendorController.text = currentVendor;
+    }
+    
     _saveLastUsedMethod(method);
   }
 
@@ -522,6 +487,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
         });
         _currentInputMethod = TransactionInputMethod.manual;
         _currentModalView = ModalView.manualForm;
+        _clearFormFields(preserveVendor: true);
       });
     }
   }
@@ -598,7 +564,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
           _chatMessages.add({'sender': 'ai', 'text': "I'm having a bit of trouble. Could you try adding the details manually?"});
           _currentInputMethod = TransactionInputMethod.manual;
           _currentModalView = ModalView.manualForm;
-          _clearFormFields(clearParsedAiData: true);
+          _clearFormFields(preserveVendor: true);
         } else {
           _chatMessages.add({'sender': 'ai', 'text': 'Received: "$message". Can you tell me more? (e.g., amount, date, purpose)'});
         }
@@ -627,18 +593,16 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   }
 
   // Clear form fields when switching between inputs
-  void _clearFormFields({bool clearParsedAiData = false}) {
+  void _clearFormFields({bool preserveVendor = false}) {
     _amountController.clear();
     _dateController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
     _selectedDate = DateTime.now();
     _descriptionController.clear();
-    _vendorController.clear();
+    if (!preserveVendor) {
+      _vendorController.clear();
+    }
     _selectedTransactionType = TransactionType.expense;
     _selectedCategory = null;
-    
-    if (clearParsedAiData) {
-      _parsedAiTransactionData = null;
-    }
   }
 
   // Populate form fields for editing an existing transaction
@@ -660,7 +624,12 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
     _dateController.text = DateFormat('yyyy-MM-dd').format(transaction.date);
     _selectedDate = transaction.date;
     _descriptionController.text = transaction.description;
-    _vendorController.text = transaction.vendorOrSource ?? '';
+    
+    // Only update vendor if AI actually detected one
+    if (transaction.vendorOrSource != null) {
+      _vendorController.text = transaction.vendorOrSource!;
+    }
+    
     _selectedTransactionType = transaction.type;
     _selectedCategory = transaction.category;
   }
